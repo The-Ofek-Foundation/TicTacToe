@@ -205,6 +205,7 @@ public class TicTacToe {
 	 * This function plays the best move
 	 */
 	public void playMoveAI() {
+		// Duplicating the array is redundant with the way Depth First Search is implemented, but it is still a good habit
 		char[][] boardCopy = new char[board.length][board[0].length];
 		for (int i = 0; i < board.length; i++)
 			for (int a = 0; a < board[i].length; a++)
