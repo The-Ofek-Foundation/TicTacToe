@@ -1,7 +1,8 @@
 /**
  * An implementation of the game Tic Tac Toe
  * in Java, with an artificial intelligence using
- * depth first search.
+ * depth first search, an another using Monte
+ * Carlo Tree Search.
  * 
  * @author Ofek Gila
  * @since September 3rd, 2015
@@ -11,6 +12,17 @@ import java.util.Scanner;
 
 public class TicTacToePlus {
 
+	/**
+	 * The expansion constant is used for analyzing child
+	 * potential in Monte Carlo (look up Monte Carlo Tree
+	 * Search on Wikipedia for more information)
+	 */
+	public static final double expansionConstant = 2;
+
+	// Increase number of trials (to 100000 or 1000000) to
+	// increase ai strength (shouldn't be necessary for tic tac toe)
+	public static final int monteCarloTrials = 10000;
+
 	public char[][] board;
 	public boolean xTurn;
 	/**
@@ -19,15 +31,23 @@ public class TicTacToePlus {
 	public int aiTurn;
 	public boolean antiTicTacToe = false;
 
-	public TicTacToePlus(int boardSize, int aiTurn) {
+	public TicTacToeMCTSNode root;
+	public boolean monteCarloMode = true;
+
+	public TicTacToePlus(int aiTurn) {
 		this.aiTurn = aiTurn;
 		xTurn = true;
-		board = new char[boardSize][boardSize];
+		board = new char[3][3];
 		for (int i = 0; i < board.length; i++)
 			for (int a = 0; a < board[i].length; a++)
 				board[i][a] = ' ';
+		root = nextRoot(-1, -1);
 	}
 
+	/**
+	 * This functions print out a passed board
+	 * @param board The passed board
+	 */
 	public static void printBoard(char[][] board) {
 		System.out.println();
 		for (int i = 0; i < board.length; i++) {
@@ -44,9 +64,12 @@ public class TicTacToePlus {
 		System.out.println();
 	}
 
+	/**
+	 * @param pumpkins ai turn as parameter
+	 */
 	public static void main(String... pumpkins) {
 		// Pass 0 for no ai, 1 for ai as X and -1 for ai as O
-		TicTacToePlus TTT = new TicTacToePlus(pumpkins.length > 0 ? Integer.parseInt(pumpkins[0]):3, pumpkins.length > 1 ? Integer.parseInt(pumpkins[1]):0);
+		TicTacToePlus TTT = new TicTacToePlus(pumpkins.length > 0 ? Integer.parseInt(pumpkins[0]):0);
 		TTT.run();
 	}
 
@@ -71,7 +94,7 @@ public class TicTacToePlus {
 	 * 
 	 * @return int Result of game
 	 */
-	public int gameResult(char[][] board) {
+	public static int gameResult(char[][] board) {
 
 		char color;
 		int consecutive;
@@ -146,7 +169,7 @@ public class TicTacToePlus {
 	 * @param  board   The current state of the board
 	 * @return boolean Whether or not game is over
 	 */
-	public boolean gameOver(char[][] board) {
+	public static boolean gameOver(char[][] board) {
 		if (gameResult(board) != 0)
 			return true;
 
@@ -159,6 +182,20 @@ public class TicTacToePlus {
 	}
 
 	/**
+	 * Plays a move
+	 * 
+	 * @param x X coord
+	 * @param y Y coord
+	 */
+	public void playMove(int x, int y) {
+		board[x][y] = xTurn ? 'X':'O';
+		xTurn = !xTurn;
+		// In Monte Carlo Tree Search, you can reuse the subtree of
+		// the previous root to be more efficient.
+		root = nextRoot(x, y);
+	}
+
+	/**
 	 * This function allows one player to play
 	 * a move given an x and y coordinate
 	 */
@@ -166,6 +203,8 @@ public class TicTacToePlus {
 		if ((aiTurn == 1 && xTurn) || (aiTurn == -1 && !xTurn))
 			playMoveAI();
 		else {
+			// if (getWinningMove(board)[0] == -1)
+			// 	System.out.println("No Winning Move");
 			Scanner keyboard = new Scanner(System.in);
 			int playerX, playerY;
 			do {
@@ -183,9 +222,8 @@ public class TicTacToePlus {
 					System.out.println(playerX + " " + playerY + " is already occupied!");
 			}	while (board[playerY][playerX] != ' ');
 
-			board[playerY][playerX] = xTurn ? 'X':'O';
+			playMove(playerY, playerX);
 		}
-		xTurn = !xTurn;
 	}
 
 	/**
@@ -218,8 +256,19 @@ public class TicTacToePlus {
 			for (int a = 0; a < board[i].length; a++)
 				boardCopy[i][a] = board[i][a];
 
-		int[] aiAnalysis = alternateFindBestMove(boardCopy, xTurn);
-		board[aiAnalysis[1]][aiAnalysis[2]] = xTurn ? 'X':'O';
+		// Run many trials for the current root node
+		if (monteCarloMode) {
+			for (int i = 0; i < monteCarloTrials; i++)
+				root.chooseChild();
+
+			int[] bestMove = getBestMove(root);
+			playMove(bestMove[0], bestMove[1]);
+		}
+		else {
+			int[] aiAnalysis = alternateFindBestMove(boardCopy, xTurn);
+			playMove(aiAnalysis[1], aiAnalysis[2]);
+		}
+		
 	}
 
 	/**
@@ -232,7 +281,7 @@ public class TicTacToePlus {
 	 * @param  board The current state of the board
 	 * @return       A two dimensional array containing all the possible moves
 	 */
-	public int[][] possibleMoves(char[][] board) {
+	public static int[][] possibleMoves(char[][] board) {
 		int numPossibleMoves = 0;
 		for (int i = 0; i < board.length; i++)
 			for (int a = 0; a < board[i].length; a++)
@@ -346,7 +395,7 @@ public class TicTacToePlus {
 	 * @param  board The current state of the board
 	 * @return       A boolean value true if possible, false otherwise
 	 */
-	public boolean winPossible(char[][] board) {
+	public static boolean winPossible(char[][] board) {
 
 		char color;
 		int consecutive;
@@ -417,5 +466,321 @@ public class TicTacToePlus {
 			return true;
 
 		return false;
+	}
+
+	/**
+	 * This function finds all the children nodes for the node,
+	 * And returns them as an array of Nodes
+	 * @param  board  The current state of the board
+	 * @param  xTurn  The current turn
+	 * @param  parent The Node that is looking for children
+	 * @return        An array of Nodes
+	 */
+	public static TicTacToeMCTSNode[] getChildrenNodes(char[][] board, boolean xTurn, TicTacToeMCTSNode parent) {
+		int numPossibleMoves = 0;
+		for (int i = 0; i < board.length; i++)
+			for (int a = 0; a < board[i].length; a++)
+				if (board[i][a] == ' ')
+					numPossibleMoves++;
+
+		TicTacToeMCTSNode[] children = new TicTacToeMCTSNode[numPossibleMoves];
+		for (int i = 0; i < board.length; i++)
+			for (int a = 0; a < board[i].length; a++)
+				if (board[i][a] == ' ') {
+					board[i][a] = xTurn ? 'X':'O';
+					numPossibleMoves--;
+					// Creates a new node with the new board state, different turn, and so on.
+					children[numPossibleMoves] = new TicTacToeMCTSNode(board, !xTurn, parent, new int[] {i, a}, expansionConstant);
+					board[i][a] = ' ';
+				}
+		return children;
+	}
+
+	/**
+	 * If there is a move that is winning for a player, return it
+	 * as an int array containing the x and y coordinates
+	 * 
+	 * @param  board The current state of the board
+	 * @return       An array containing the x and y coords
+	 */
+	public static int[] getWinningMove(char[][] board) {
+
+		char color;
+		int consecutive;
+		boolean emptyAdjacentSpot;
+		int[] spotLoc = null;
+
+		// check vertical
+		for (int i = 0; i < board.length; i++) {
+			consecutive = 0;
+			color = '?';
+			emptyAdjacentSpot = false;
+			for (int a = 0; a < board[i].length; a++)
+				if (board[i][a] == color)
+					consecutive++;
+				else if (board[i][a] == 'X' || board[i][a] == 'O') {
+					consecutive = 1;
+					color = board[i][a];
+				}
+				else {
+					emptyAdjacentSpot = true;
+					spotLoc = new int[] {i, a};
+				}
+			if (consecutive == 2 && emptyAdjacentSpot)
+				return spotLoc;
+		}
+
+		// check horizontal
+		for (int a = 0; a < board[0].length; a++) {
+			consecutive = 0;
+			color = '?';
+			emptyAdjacentSpot = false;
+			for (int i = 0; i < board.length; i++)
+				if (board[i][a] == color)
+					consecutive++;
+				else if (board[i][a] == 'X' || board[i][a] == 'O') {
+					consecutive = 1;
+					color = board[i][a];
+				}
+				else {
+					emptyAdjacentSpot = true;
+					spotLoc = new int[] {i, a};
+				}
+			if (consecutive == 2 && emptyAdjacentSpot)
+				return spotLoc;
+		}
+
+		// check top-left to bottom-right diagonal
+		consecutive = 0;
+		color = '?';
+		emptyAdjacentSpot = false;
+		for (int i = 0, a = 0; i < board.length; i++, a++)
+			if (board[i][a] == color)
+				consecutive++;
+			else if (board[i][a] == 'X' || board[i][a] == 'O') {
+				consecutive = 1;
+				color = board[i][a];
+			}
+			else {
+				emptyAdjacentSpot = true;
+				spotLoc = new int[] {i, a};
+			}
+		if (consecutive == 2 && emptyAdjacentSpot)
+			return spotLoc;
+
+		// check top-right to bottom-left diagonal
+		consecutive = 0;
+		color = '?';
+		emptyAdjacentSpot = false;
+		for (int i = board.length - 1, a = 0; i >= 0; i--, a++)
+			if (board[i][a] == color)
+				consecutive++;
+			else if (board[i][a] == 'X' || board[i][a] == 'O') {
+				consecutive = 1;
+				color = board[i][a];
+			}
+			else {
+				emptyAdjacentSpot = true;
+				spotLoc = new int[] {i, a};
+			}
+		if (consecutive == 2 && emptyAdjacentSpot)
+			return spotLoc;
+
+		return new int[] {-1, -1};
+	}
+
+	/**
+	 * Returns a random legal move, or a move that is winning
+	 * 
+	 * @param  board The current state of the board
+	 * @return       A random move int he form of an int array [xcoord, ycoord]
+	 */
+	public static int[] getRandomMove(char[][] board) {
+		// For a true Monte Carlo solution, comment out the next three lines
+		// so that the simulations will truly be random.
+		int[] victoryMove = getWinningMove(board);
+		if (victoryMove[0] != -1)
+			return victoryMove;
+
+		int numPossibleMoves = 0;
+		for (int i = 0; i < board.length; i++)
+			for (int a = 0; a < board[i].length; a++)
+				if (board[i][a] == ' ')
+					numPossibleMoves++;
+		
+		int move = (int)(Math.random() * numPossibleMoves);
+
+		TicTacToeMCTSNode[] children = new TicTacToeMCTSNode[numPossibleMoves];
+		for (int i = 0; i < board.length; i++)
+			for (int a = 0; a < board[i].length; a++)
+				if (board[i][a] == ' ') {
+					if (move == 0)
+						return new int[] {i, a};
+					move--;
+				}
+		return new int[] {-1, -1};
+	}
+
+	/**
+	 * If the root doesn't exist, create the root
+	 * If the root exists, change the root to the node in
+	 * the root's subtree that played the corresponding x 
+	 * and y.
+	 * 
+	 * @param  x The x coord played
+	 * @param  y The y coord played
+	 * @return   A new root
+	 */
+	public TicTacToeMCTSNode nextRoot(int x, int y) {
+		if (root == null || root.children == null)
+			return new TicTacToeMCTSNode(board, xTurn, null, null, expansionConstant);
+		for (int i = 0; i < root.children.length; i++)
+			if (root.children[i].lastMove[0] == x && root.children[i].lastMove[1] == y) {
+				root = root.children[i];
+				root.parent = null;
+				return root;
+			}
+
+		return new TicTacToeMCTSNode(board, xTurn, null, null, expansionConstant);
+	}
+
+	/**
+	 * Returns the move coords of the best move, determined by
+	 * the child note with the greatest total trials (To understand
+	 * this better, look up Monte Carlo Tree Search on Wikipedia).
+	 * @param  root The root node
+	 * @return      The move coords of the best move
+	 */
+	public static int[] getBestMove(TicTacToeMCTSNode root) {
+		int[] bestMove = new int[2];
+		int mostTrials = 0;
+		for (int i = 0; i < root.children.length; i++) {
+			if (root.children[i].totalTrials > mostTrials) {
+				mostTrials = root.children[i].totalTrials;
+				bestMove = root.children[i].lastMove;
+			}
+		}
+		return bestMove;
+	}
+}
+
+/**
+ * This class acts as a single Monte Carlo Tic Tac Toe Node.
+ * To understand this better, look up Monte Carlo Tree Search
+ * on Wikipedia
+ */
+class TicTacToeMCTSNode {
+	public char[][] board;
+	public boolean xTurn;
+	public TicTacToeMCTSNode parent;
+	public int[] lastMove;
+	public double expansionConstant;
+	public int hits, misses, totalTrials;
+	public TicTacToeMCTSNode[] children;
+
+	TicTacToeMCTSNode(char[][] board, boolean xTurn, TicTacToeMCTSNode parent, int[] lastMove, double expansionConstant) {
+		this.board = new char[board.length][board[0].length];
+		for (int i = 0; i < board.length; i++)
+			for (int a = 0; a < board[i].length; a++)
+				this.board[i][a] = board[i][a];
+
+		this.xTurn = xTurn;
+		this.parent = parent;
+		this.lastMove = lastMove;
+		this.expansionConstant = expansionConstant;
+		hits = misses = totalTrials = 0;
+	}
+
+	/**
+	 * Evaluates the child's potential
+	 * @param  child The child node to evaluate
+	 * @return       The evaluated potential
+	 */
+	private double childPotential(TicTacToeMCTSNode child) {
+		// This formula can be found on Wikipedia
+		double w = child.misses, n = child.totalTrials;
+		return w / n + expansionConstant * Math.sqrt(Math.log(totalTrials) / n);
+	}
+
+	/**
+	 * Choose a child, run a simulation if needed, and then 
+	 * backpropogate the results
+	 */
+	public void chooseChild() {
+		// If the node does not have any children yet, give it children
+		if (children == null)
+			children = TicTacToePlus.getChildrenNodes(board, xTurn, this);
+		// If the node's board represents a completed game, backpropogate the results
+		if (TicTacToePlus.gameOver(board))
+			backPropogate(TicTacToePlus.gameResult(board));
+		else {
+			int countUnexplored = 0;
+			for (int i = 0; i < children.length; i++)
+				if (children[i].totalTrials == 0)
+					countUnexplored++;
+			// If the node has any unexplored children, explore them
+			if (countUnexplored > 0) {
+				TicTacToeMCTSNode[] unexplored = new TicTacToeMCTSNode[countUnexplored];
+				for (int i = 0; i < children.length; i++)
+					if (children[i].totalTrials == 0) {
+						countUnexplored--;
+						unexplored[countUnexplored] = children[i];
+					}
+				// Run a simulation for a random unexplored child
+				unexplored[(int)(Math.random() * unexplored.length)].runSimulation();
+			}
+			// If all the Node's children are explored, call this function in the child
+			// with the best potential (look up on Wikipedia to understand potential)
+			else {
+				TicTacToeMCTSNode bestChild = null;
+				double bestPotential = -1, potential;
+				for (int i = 0; i < children.length; i++) {
+					potential = childPotential(children[i]);
+					if (potential > bestPotential) {
+						bestPotential = potential;
+						bestChild = children[i];
+					}
+				}
+				bestChild.chooseChild();
+			}	
+		}
+	}
+
+	/**
+	 * This function backpropogates a simulation result
+	 * all the way to the root node.
+	 * @param result The result of the simulation
+	 */
+	public void backPropogate(int result) {
+		if ((result > 0 && xTurn) || (result < 0 && !xTurn))
+			hits++;
+		else if (result != 0)
+			misses++;
+		totalTrials++;
+		if (parent != null)
+			parent.backPropogate(result);
+	}
+
+	/**
+	 * Run a single simulation for this node. Note that these simulations
+	 * are not completely random since the getRandomMove function automatically
+	 * returns winning or losing moves. This can be changed by commenting the first
+	 * three lines
+	 *
+	 * @see getRandomMove
+	 */
+	public void runSimulation() {
+		char[][] boardCopy = new char[board.length][board[0].length];
+		for (int i = 0; i < boardCopy.length; i++)
+			for (int a = 0; a < boardCopy[i].length; a++)
+				boardCopy[i][a] = board[i][a];
+		boolean turn = xTurn;
+		while (!TicTacToePlus.gameOver(boardCopy)) {
+			int[] move = TicTacToePlus.getRandomMove(boardCopy);
+			boardCopy[move[0]][move[1]] = turn ? 'X':'O';
+			turn = !turn;
+		}
+		// Backpropogate the result of the simulation
+		backPropogate(TicTacToePlus.gameResult(boardCopy));
 	}
 }
