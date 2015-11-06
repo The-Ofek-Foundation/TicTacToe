@@ -9,6 +9,7 @@
  */
 
 import java.util.Scanner;
+import java.util.ArrayList;
 
 public class TicTacToePlus {
 
@@ -21,7 +22,7 @@ public class TicTacToePlus {
 
 	// Increase number of trials (to 100000 or 1000000) to
 	// increase ai strength (shouldn't be necessary for tic tac toe)
-	public static final int monteCarloTrials = 10000;
+	public static final int monteCarloTrials = 100000;
 
 	public char[][] board;
 	public boolean xTurn;
@@ -29,7 +30,12 @@ public class TicTacToePlus {
 	 * aiTurn is 0 for no ai, 1 for X and 0 for O
 	 */
 	public int aiTurn;
-	public boolean antiTicTacToe = false;
+
+	/**
+	 * Anti Tic Tac Toe is a game where the goal is
+	 * for your opponent to win a game of Tic Tac Toe
+	 */
+	public static boolean antiTicTacToe = true;
 
 	public TicTacToeMCTSNode root;
 	public boolean monteCarloMode = true;
@@ -112,7 +118,7 @@ public class TicTacToePlus {
 				}
 				else consecutive = 0;
 			if (consecutive == 3)
-				return color == 'X' ? 1:-1;
+				return color == 'O' == antiTicTacToe ? 1:-1;
 		}
 
 		// check horizontal
@@ -128,7 +134,7 @@ public class TicTacToePlus {
 				}
 				else consecutive = 0;
 			if (consecutive == 3)
-				return color == 'X' ? 1:-1;
+				return color == 'O' == antiTicTacToe ? 1:-1;
 		}
 
 		// check top-left to bottom-right diagonal
@@ -143,7 +149,7 @@ public class TicTacToePlus {
 			}
 			else consecutive = 0;
 		if (consecutive == 3)
-			return color == 'X' ? 1:-1;
+			return color == 'O' == antiTicTacToe ? 1:-1;
 
 		// check top-right to bottom-left diagonal
 		consecutive = 0;
@@ -157,7 +163,7 @@ public class TicTacToePlus {
 			}
 			else consecutive = 0;
 		if (consecutive == 3)
-			return color == 'X' ? 1:-1;
+			return color == 'O' == antiTicTacToe ? 1:-1;
 
 		return 0;
 	}
@@ -233,14 +239,13 @@ public class TicTacToePlus {
 		System.out.println("\nGame Over!!!");
 		switch (gameResult(board)) {
 			case -1:
-
-				System.out.println((antiTicTacToe ? "X's":"Circles") + " won!");
+				System.out.println("Circles won!");
 				break;
 			case 0:
 				System.out.println("Tie game!");
 				break;
 			case 1:
-				System.out.println((antiTicTacToe ? "Circles":"X's") + " won!");
+				System.out.println("X's won!");
 				break;
 		}
 		System.out.println("\n");
@@ -320,7 +325,7 @@ public class TicTacToePlus {
 		
 		int[][] possibleMoves = possibleMoves(board);
 
-		int bestX = possibleMoves[0][0], bestY = possibleMoves[0][1], result = (xTurn != antiTicTacToe) ? -1:1;
+		int bestX = possibleMoves[0][0], bestY = possibleMoves[0][1], result = xTurn ? -1:1;
 
 		for (int i = 0; i < possibleMoves.length; i++) {
 			// Place the move, then run the function recrusively, then undo the move
@@ -329,7 +334,7 @@ public class TicTacToePlus {
 			board[possibleMoves[i][0]][possibleMoves[i][1]] = ' ';
 
 			// Check if the result is favorable for the player
-			if ((xTurn != antiTicTacToe && tempResult > result) || (xTurn == antiTicTacToe && tempResult < result)) {
+			if ((xTurn && tempResult > result) || (!xTurn && tempResult < result)) {
 				bestX = possibleMoves[i][0];
 				bestY = possibleMoves[i][1];
 				result = tempResult;
@@ -361,7 +366,7 @@ public class TicTacToePlus {
 		// If the game is still going, check all the possible moves
 		// and choose the one with the most favorable outcome for the player
 		
-		int bestX = -1, bestY = -1, result = xTurn != antiTicTacToe ? -1:1;
+		int bestX = -1, bestY = -1, result = xTurn ? -1:1;
 
 		for (int i = 0; i < board.length; i++)
 			for (int a = 0; a < board[i].length; a++) {
@@ -373,7 +378,7 @@ public class TicTacToePlus {
 				board[i][a] = ' ';
 
 				// Check if the result is favorable for the player
-				if ((xTurn != antiTicTacToe && tempResult > result) || (xTurn == antiTicTacToe && tempResult < result)) {
+				if ((xTurn && tempResult > result) || (!xTurn && tempResult < result)) {
 					bestX = i;
 					bestY = a;
 					result = tempResult;
@@ -468,6 +473,84 @@ public class TicTacToePlus {
 		return false;
 	}
 
+	public static boolean identicalBoards(char[][] board1, char[][] board2) {
+		boolean identical = true;
+		outer:
+		for (int i = 0; i < board1.length; i++)
+			for (int a = 0; a < board1[i].length; a++)
+				if (board1[i][a] != board2[i][board1[i].length - 1 - a]) {
+					identical = false;
+					break outer;
+				}
+		if (identical)
+			return true;
+
+		identical = true;
+		outer:
+		for (int i = 0; i < board1.length; i++)
+			for (int a = 0; a < board1[i].length; a++)
+				if (board1[i][a] != board2[board1.length - 1 - i][a]) {
+					identical = false;
+					break outer;
+				}
+		if (identical)
+			return true;
+
+		identical = true;
+		outer:
+		for (int i = 0; i < board1.length; i++)
+			for (int a = 0; a < board1[i].length; a++)
+				if (board1[i][a] != board2[board1.length - 1 - i][board1[i].length - 1 - a]) {
+					identical = false;
+					break outer;
+				}
+		if (identical)
+			return true;
+
+		identical = true;
+		outer:
+		for (int i = 0; i < board1.length; i++)
+			for (int a = 0; a < board1[i].length; a++)
+				if (board1[i][a] != board2[a][i]) {
+					identical = false;
+					break outer;
+				}
+		if (identical)
+			return true;
+
+		identical = true;
+		outer:
+		for (int i = 0; i < board1.length; i++)
+			for (int a = 0; a < board1[i].length; a++)
+				if (board1[i][a] != board2[a][board1.length - 1 - i]) {
+					identical = false;
+					break outer;
+				}
+		if (identical)
+			return true;
+
+		identical = true;
+		outer:
+		for (int i = 0; i < board1.length; i++)
+			for (int a = 0; a < board1[i].length; a++)
+				if (board1[i][a] != board2[board1[i].length - 1 - a][board1.length - 1 - i]) {
+					identical = false;
+					break outer;
+				}
+		if (identical)
+			return true;
+
+		identical = true;
+		outer:
+		for (int i = 0; i < board1.length; i++)
+			for (int a = 0; a < board1[i].length; a++)
+				if (board1[i][a] != board2[board1[i].length - 1 - a][i]) {
+					identical = false;
+					break outer;
+				}
+		return identical;
+	}
+
 	/**
 	 * This function finds all the children nodes for the node,
 	 * And returns them as an array of Nodes
@@ -477,23 +560,25 @@ public class TicTacToePlus {
 	 * @return        An array of Nodes
 	 */
 	public static TicTacToeMCTSNode[] getChildrenNodes(char[][] board, boolean xTurn, TicTacToeMCTSNode parent) {
-		int numPossibleMoves = 0;
-		for (int i = 0; i < board.length; i++)
-			for (int a = 0; a < board[i].length; a++)
-				if (board[i][a] == ' ')
-					numPossibleMoves++;
+		ArrayList<TicTacToeMCTSNode> children = new ArrayList<TicTacToeMCTSNode>(board.length * board[0].length);
 
-		TicTacToeMCTSNode[] children = new TicTacToeMCTSNode[numPossibleMoves];
 		for (int i = 0; i < board.length; i++)
 			for (int a = 0; a < board[i].length; a++)
 				if (board[i][a] == ' ') {
 					board[i][a] = xTurn ? 'X':'O';
-					numPossibleMoves--;
 					// Creates a new node with the new board state, different turn, and so on.
-					children[numPossibleMoves] = new TicTacToeMCTSNode(board, !xTurn, parent, new int[] {i, a}, expansionConstant);
+					children.add((int)(Math.random() * children.size()), new TicTacToeMCTSNode(board, !xTurn, parent, new int[] {i, a}, expansionConstant));
 					board[i][a] = ' ';
 				}
-		return children;
+
+		for (int i = 0; i < children.size() - 1; i++)
+			for (int a = i + 1; a < children.size(); a++)
+				if (identicalBoards(children.get(i).board, children.get(a).board)) {
+					children.remove(a);
+					a--;
+				}
+
+		return children.toArray(new TicTacToeMCTSNode[children.size()]);
 	}
 
 	/**
@@ -595,31 +680,48 @@ public class TicTacToePlus {
 	 * @param  board The current state of the board
 	 * @return       A random move int he form of an int array [xcoord, ycoord]
 	 */
-	public static int[] getRandomMove(char[][] board) {
+	public static int[] getRandomMove(char[][] board, boolean xTurn) {
 		// For a true Monte Carlo solution, comment out the next three lines
 		// so that the simulations will truly be random.
-		int[] victoryMove = getWinningMove(board);
-		if (victoryMove[0] != -1)
-			return victoryMove;
+		if (antiTicTacToe) {
+			antixCoords = new ArrayList<Integer>(board.length * board[0].length);
+			antiyCoords = new ArrayList<Integer>(board.length * board[0].length);
+		}
+		else {
+			int[] victoryMove = getWinningMove(board);
+			if (!antiTicTacToe && victoryMove[0] != -1)
+				return victoryMove;
+		}
+
+		ArrayList<Integer> xCoords = new ArrayList<Integer>(board.length * board[0].length);
+		ArrayList<Integer> yCoords = new ArrayList<Integer>(board.length * board[0].length);
 
 		int numPossibleMoves = 0;
 		for (int i = 0; i < board.length; i++)
 			for (int a = 0; a < board[i].length; a++)
-				if (board[i][a] == ' ')
-					numPossibleMoves++;
-		
-		int move = (int)(Math.random() * numPossibleMoves);
-
-		TicTacToeMCTSNode[] children = new TicTacToeMCTSNode[numPossibleMoves];
-		for (int i = 0; i < board.length; i++)
-			for (int a = 0; a < board[i].length; a++)
 				if (board[i][a] == ' ') {
-					if (move == 0)
-						return new int[] {i, a};
-					move--;
+					if (antiTicTacToe) {
+						board[i][a] = xTurn ? 'X':'O';
+						if (gameResult(board) == 0) {
+							antixCoords.add(i);
+							antiyCoords.add(a);
+						}
+						board[i][a] = ' ';
+					}
+					xCoords.add(i);
+					yCoords.add(a);
 				}
-		return new int[] {-1, -1};
+
+		if (antiTicTacToe && antixCoords.size() > 0) {
+			int move = (int)(Math.random() * antixCoords.size());
+			return new int[] {antixCoords.get(move), antiyCoords.get(move)};
+		}
+		else {
+			int move = (int)(Math.random() * xCoords.size());
+			return new int[] {xCoords.get(move), yCoords.get(move)};
+		}
 	}
+	static ArrayList<Integer> antixCoords, antiyCoords;
 
 	/**
 	 * If the root doesn't exist, create the root
@@ -698,7 +800,7 @@ class TicTacToeMCTSNode {
 	 */
 	private double childPotential(TicTacToeMCTSNode child) {
 		// This formula can be found on Wikipedia
-		double w = child.misses, n = child.totalTrials;
+		double w = child.misses - child.hits, n = child.totalTrials;
 		return w / n + expansionConstant * Math.sqrt(Math.log(totalTrials) / n);
 	}
 
@@ -776,7 +878,7 @@ class TicTacToeMCTSNode {
 				boardCopy[i][a] = board[i][a];
 		boolean turn = xTurn;
 		while (!TicTacToePlus.gameOver(boardCopy)) {
-			int[] move = TicTacToePlus.getRandomMove(boardCopy);
+			int[] move = TicTacToePlus.getRandomMove(boardCopy, turn);
 			boardCopy[move[0]][move[1]] = turn ? 'X':'O';
 			turn = !turn;
 		}
