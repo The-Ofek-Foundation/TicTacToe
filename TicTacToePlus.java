@@ -35,7 +35,7 @@ public class TicTacToePlus {
 	 * Anti Tic Tac Toe is a game where the goal is
 	 * for your opponent to win a game of Tic Tac Toe
 	 */
-	public static boolean antiTicTacToe = true;
+	public static boolean antiTicTacToe = false;
 
 	public TicTacToeMCTSNode root;
 	public boolean monteCarloMode = true;
